@@ -1,10 +1,13 @@
 #!/usr/bin/env ruby
 #
-require 'pry'
 require 'prawn'
 require 'prawn/measurement_extensions'
 
 class Arena
+  require_relative 'Arc'
+#  include Arc
+
+  PAGE_SIZE = "A4"
 
   module Color
     CREAM       = "ffffcc"
@@ -28,12 +31,14 @@ class Arena
   BOX_HEIGHT = 54.mm
   BOX_CURVE  =  3.mm
 
-  TOP  = [21.mm, -4.mm]
+  TOP  = [23.mm, -4.mm]
   WIDTH = 17.mm
   DEPTH = 46.mm
 
+  TEXT_WIDTH  = 20.mm
+  TEXT_HEIGHT = 44.mm
 
-  ITOP  = [22.mm, -5.mm]
+  ITOP  = [24.mm, -5.mm]
   IX    = ITOP[0]
   IY    = ITOP[1]
 
@@ -97,7 +102,8 @@ class Arena
       n = new(name)
       n.instance_eval(&block) if block
     else
-      Prawn::Document.generate(name) do |pdf|
+      Prawn::Document.generate(name,
+                               :page_size => PAGE_SIZE) do |pdf|
         n = new(pdf)
         n.instance_eval(&block) if block
       end
@@ -262,7 +268,7 @@ class Arena
       when :up
         xo, yo = -2.mm, 5.mm
       when :dn
-        xo, yo = -2.mm, -1.mm
+        xo, yo = -2.mm, -0.75.mm
       when :lf
         xo, yo = -4.5.mm, 2.mm
         xo -= 0.5.mm if mod[k]
@@ -312,7 +318,7 @@ class Arena
           @pdf.font_size 10
           @pdf.text_box t.join("\n\n"),
                         :at => [0.5.mm, -7.mm],
-                        :width => 18.mm,:height => 44.mm,
+                        :width => TEXT_WIDTH, :height => TEXT_HEIGHT,
                         :valign => :center,
                         :align => :center,
                         :overflow => :shrink_to_fit
@@ -361,10 +367,33 @@ class Arena
     end
     @pdf.stroke_color = sc
   end
+
+  def self.circle(pdf, x, y, radius, direction)
+    pdf.move_to x, y
+    pdf.curve_to [x + radius, y + radius],
+                 :bounds => [[x + radius * Arc::MAGIC, y],
+                             [x + radius, y + radius * (1-Arc::MAGIC)]]
+    pdf.curve_to [x, y + radius*2],
+                 :bounds => [[x + radius, y + radius * (1+Arc::MAGIC)],
+                             [x + radius * Arc::MAGIC, y + radius*2]]
+    pdf.curve_to [x - radius, y + radius],
+                 :bounds => [[x - radius * Arc::MAGIC, y + radius*2],
+                             [x - radius, y + radius * (1+Arc::MAGIC)]]
+    pdf.curve_to [x, y],
+                 :bounds => [[x - radius, y + radius * (1-Arc::MAGIC)],
+                             [x - radius * Arc::MAGIC, y]]
+    pdf.stroke
+
+    pdf.stroke_color "ff0000"
+    pdf.circle [x, y+radius], 50.mm
+    pdf.stroke
+  end
+
 end
 
 if __FILE__ == $0
-  Prawn::Document.generate("/tmp/hello.pdf") do |pdf|
+  Prawn::Document.generate("hello.pdf",
+                           :page_size => Arena::PAGE_SIZE) do |pdf|
     a = Arena.generate(pdf) do
       big_letters :A, :X
       text << '"A" Enter in working trot'
@@ -372,5 +401,37 @@ if __FILE__ == $0
       text << 'Proceed in working trot'
       render_number(1)
     end
+    pdf.move_to 10.mm, 100.mm
+    pdf.curve_to [60.mm, 50.mm], :bounds => [[10.mm, 50.mm], [10.mm, 50.mm]]
+    pdf.move_to 10.mm, 100.mm
+    pdf.curve_to [60.mm, 50.mm], :bounds => [[60.mm, 100.mm], [60.mm, 100.mm]]
+
+    pdf.move_to 10.mm, 100.mm
+    pdf.curve_to [60.mm, 50.mm], :bounds => [[35.mm, 100.mm], [60.mm, 75.mm]]
+
+    pdf.rectangle [10.mm, 100.mm], 50.mm, 50.mm
+    pdf.stroke
+
+    pdf.rectangle [100.mm, 150.mm], 50.mm, 50.mm
+    pdf.stroke
+
+    pdf.stroke_color "0000ff"
+    Arena.circle pdf, 100.mm, 100.mm, 50.mm, 0
+    pdf.stroke
+
+    pdf.circle [75.mm, 75.mm], 71.mm
+    pdf.stroke
+    pdf.stroke_color "00f0f0"
+    a = Arc.arc_points(70.mm, 0, 90+45, :offset => [75.mm, 75.mm])
+    a.each do |c|
+      pdf.move_to [75.mm,75.mm]
+      pdf.line_to c[0]
+      pdf.line_to c[3]
+      pdf.line_to [75.mm,75.mm]
+      pdf.move_to c[0]
+      pdf.curve_to c[3], :bounds => [c[1], c[2]]
+    end
+    pdf.stroke
+
   end
 end

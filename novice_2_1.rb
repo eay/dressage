@@ -9,14 +9,14 @@ Arena.generate("n_2_1.pdf") do
   text 'Proceed in working trot'
 
   track :A, :st, [:X, :L], :"arrow0+2"
-  track :X, :st, [:G, :C], :arrow0
+  track :X, :st, :G, :"arrow0+2"
   render_number(1)
 
   big_letters :E, :B, :C, :X
   text "\"C\"\nTrack left"
   text "\"EX\"\nHalf circle left 10m"
   text "\"XB\"\nHalf circle right 10m"
-  track :C, :st, :X
+#  track [:G, :C], :"cc-315-180", :H st, :X
   track :X, :st, :G, :C
   track [:G, :C], :cc180, :H, :st, :E, :cc180, :X, :cw180, :B, :"arrow180+3"
   track :light, :B, :st, :F, :cw90, :A, :cw90, :K, :arrow0
@@ -31,6 +31,8 @@ Arena.generate("n_2_1.pdf") do
   text "\"C\"\nCircle left 20m rising trot, allowing the horse to stretch forward and downward"
   text "\"Before C\"\nShorten the reins"
   text "\"C\"\nWorking trot"
+  # [:cc, radius, direction to centre, start_angle, finish_angle
+  track :C, [:cc, 20, 180, 270, 15
   render_number(4)
 
   big_letters :C, :H
@@ -40,6 +42,7 @@ Arena.generate("n_2_1.pdf") do
   big_letters :H, :P, :F
   text "\"HP\"\nFree walk on a long rein"
   text "\"PF\"\nMedium walk"
+  track :H, :st, :P, :st, [:P, :F], :"arrow180+4"
   render_number(6)
 
   big_letters :F, :A
