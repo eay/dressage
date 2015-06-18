@@ -1,4 +1,4 @@
-module Arc
+class Arc
 
 # Generate the bezier points needed to draw a cicle arc, taken from
 # http://hansmuller-flex.blogspot.com.au/2011/04/approximating-circular-arc-with-cubic.html
@@ -16,6 +16,15 @@ module Arc
     points.map do |x,y|
       [c * x + -s * y, s * x + c * y]
     end
+  end
+
+  # Given a radius and an angle, give us the centre point relative
+  # to the origin
+  def self.centre(angle, radius)
+    a = Math::PI * angle / 180.0
+    x = Math::cos(a) * radius
+    y = Math::sin(a) * radius
+    [x, y]
   end
 
   # Return an array of 4 point pairs, the radius is the origin.

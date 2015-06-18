@@ -8,23 +8,22 @@ Arena.generate("n_2_1.pdf") do
   text "\"X\"\nHalt, Salute"
   text 'Proceed in working trot'
 
-  track :A, :st, [:X, :L], :"arrow0+2"
-  track :X, :st, :G, :"arrow0+2"
+  track :A, :st, [:X, :L], :"arrow90+2"
+  track :X, :st, :G, :"arrow90+2"
   render_number(1)
 
   big_letters :E, :B, :C, :X
   text "\"C\"\nTrack left"
   text "\"EX\"\nHalf circle left 10m"
   text "\"XB\"\nHalf circle right 10m"
-#  track [:G, :C], :"cc-315-180", :H st, :X
-  track :X, :st, :G, :C
-  track [:G, :C], :cc180, :H, :st, :E, :cc180, :X, :cw180, :B, :"arrow180+3"
-  track :light, :B, :st, :F, :cw90, :A, :cw90, :K, :arrow0
+  track [:G, :C], :tl, :H, :st, :E, :"cc10-180-0", :X, "cw10-180-0", :B, :"arrow270+3"
+  track :light, :B, :st, :F, :rb, :A, :bl, :K, :"arrow90+1"
   render_number(2)
 
   big_letters :C, :M, :X, :K
   text "\"KXM\" Lengthen stride in trot"
   text "\"MC\" Working trot'"
+  track :K, :st, :M, :rt, :arrow180
   render_number(3)
 
   big_letters :C
@@ -32,7 +31,7 @@ Arena.generate("n_2_1.pdf") do
   text "\"Before C\"\nShorten the reins"
   text "\"C\"\nWorking trot"
   # [:cc, radius, direction to centre, start_angle, finish_angle
-  track :C, [:cc, 20, 180, 270, 15
+  track :C, :"cc20-90-70", :C, :"arrow160-1"
   render_number(4)
 
   big_letters :C, :H

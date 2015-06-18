@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 #
+require 'pry'
 require 'prawn'
 require 'prawn/measurement_extensions'
 
@@ -20,11 +21,12 @@ class Arena
     LIGHT_YELLOW= "ffffe0"
     ORANGE      = "ff8c00"
     DARK_BLUE   = "0000ff"
+    LIGHT_BLUE  = "a0a0ff"
 
     ARENA       = BUFF
     ARROW       = ORANGE
     LINE        = DARK_BLUE
-    LINE2       = DARK_BLUE
+    LINE2       = LIGHT_BLUE
   end
 
   BOX_WIDTH  = 44.mm
@@ -41,9 +43,9 @@ class Arena
   ITOP  = [24.mm, -5.mm]
   IX    = ITOP[0]
   IY    = ITOP[1]
-
   IWIDTH = 15.mm
   IDEPTH = 44.mm
+
   C = [ IX + IWIDTH/2,  IY,                          :up, :bl ]
   G = [ IX + IWIDTH/2,  IY - 4.mm - 9.mm * 0,        :ct, :gr ]
   I = [ IX + IWIDTH/2,  IY - 4.mm - 9.mm * 1,        :ct, :gr ]
@@ -70,9 +72,24 @@ class Arena
     :B => B, :P => P, :F => F,
   }
 
+  CORNER = {
+    :tl => [C, H, :m, :cc],
+    :tr => [C, M, :m, :cw],
+    :lt => [H, C, :cw, :m],
+    :rt => [M, C, :cc, :m],
+    :bl => [A, K, :m, :cw],
+    :br => [A, F, :m, :cc],
+    :lb => [K, A, :cc, :m],
+    :rb => [F, A, :cw, :m],
+  }
+
   attr_reader :pdf
   attr_accessor :number
   attr_accessor :big_leters
+
+  def m_to_mm(num)
+    IWIDTH/20 * num
+  end
 
   def text(*a)
     @text << a
@@ -153,7 +170,7 @@ class Arena
     @pdf.line_width = 0.1.pt
     @pdf.undash
     @pdf.translate(x, y) do
-      @pdf.rotate(angle, :origin => [0,0]) do
+      @pdf.rotate(angle - 90, :origin => [0,0]) do
         @pdf.move_to 0.mm, 0.mm + y_off
         @pdf.line_to 1.mm, -3.mm + y_off
         @pdf.line_to -1.mm, -3.mm + y_off
@@ -189,34 +206,50 @@ class Arena
   end
 
   def render_tracks
-    @tracks.each do |tr|
+    @tracks.reverse.each do |tr|
+      line_color = Color::LINE
       t = tr.dup
       line = false
+      curve = {r: 0, sa: 0, ea: 0, x: 0, y: 0}
       x, y = 0, 0
 
       t.each do |cmd|
+        puts "<<#{cmd}>>"
         case
         when LETTERS[cmd] || Array === cmd
+          lx, ly = x, y
           x, y = get_location(cmd)
           case line
           when :st
             @pdf.line_to x, y
-          when :cc
-          when :cw
+          when :curve
+            arc(pdf, curve[:x], curve[:y],
+                     curve[:r],
+                     curve[:sa], curve[:ea])
           else
             @pdf.move_to x, y
           end
-        when m = cmd.to_s.match(/^cc(\d+)$/)
-          line = :cc
-        when m = cmd.to_s.match(/^cw(\d+)$/)
-          line = :cw
+        when m = cmd.to_s.match(/^c(c|w)(\d+)-(\d+)-(\d+)$/)
+          clock_wise = m[1] == 'w'
+          line = :curve
+          curve[:r] = m_to_mm(m[2].to_i)/2.0
+          curve[:sa] = m[3].to_i
+          curve[:ea] = m[4].to_i
+          curve[:sa], curve[:ea] = curve[:ea], curve[:sa] if clock_wise
+#          aangle = curve[:sa] + (clock_wise ? -90 : 90)
+#          aangle = curve[:ea] + (clock_wise ? -90 : 90)
+          aangle = curve[:sa]
+          aangle += 180 unless clock_wise
+          curve[:x], curve[:y] = Arc.centre(aangle, curve[:r])
+          curve[:x] += x
+          curve[:y] += y
         when cmd == :st
           line = :st
         when m = cmd.to_s.match(/^arrow(\d+)([+-]\d)?$/)
           if line
             @pdf.line_width = 0.8.mm
             @pdf.dash [2.mm, 1.mm], :phase => 2.mm
-            @pdf.stroke_color Color::LINE
+            @pdf.stroke_color line_color
             @pdf.stroke
             line = nil
           end
@@ -228,6 +261,27 @@ class Arena
           end
           render_arrow(x, y, m[1].to_i, y_off: ao)
         when cmd == :light
+          line_color = Color::LINE2
+        when a = CORNER[cmd]
+          puts "#{cmd.to_s}: #{a}"
+          if a[2] == :m
+            dx = (a[0][0] - a[1][0]) / 2
+            mid = [a[0][0] - dx, a[0][1]]
+            @pdf.line_to mid
+            @pdf.curve_to a[1], :bounds => [
+              [a[1][0], a[0][1]],
+              [a[1][0], a[0][1]]]
+          else
+            dx = (a[0][0] - a[1][0]) / 2
+            mid = [a[1][0] + dx, a[1][1]]
+            @pdf.curve_to mid, :bounds => [
+              [a[1][0], a[0][1]],
+              [a[1][0], a[0][1]]]
+            @pdf.line_to a[1]
+          end
+
+          x, y = a[1]
+        when :cw90
         else
           raise "unknown track command: #{cmd}"
         end
@@ -360,8 +414,8 @@ class Arena
           @pdf.stroke
         end
 
-        write_the_leters
         render_tracks
+        write_the_leters
 
       end
     end
@@ -387,6 +441,14 @@ class Arena
     pdf.stroke_color "ff0000"
     pdf.circle [x, y+radius], 50.mm
     pdf.stroke
+  end
+
+  def arc(pdf, x, y, r, start_angle, end_angle)
+    a = Arc.arc_points(r, start_angle, end_angle, :offset => [x, y])
+    a.each_with_index do |c,i|
+      pdf.move_to c[0] if i == 0
+      pdf.curve_to c[3], :bounds => [c[1], c[2]]
+    end
   end
 
 end
@@ -428,7 +490,15 @@ if __FILE__ == $0
       pdf.line_to c[0]
       pdf.line_to c[3]
       pdf.line_to [75.mm,75.mm]
-      pdf.move_to c[0]
+#      pdf.move_to c[0]
+#      pdf.curve_to c[3], :bounds => [c[1], c[2]]
+    end
+    pdf.stroke
+    pdf.stroke_color "000ff0"
+
+    first = true
+    a.each_with_index do |c,i|
+      pdf.move_to c[0] if i == 0
       pdf.curve_to c[3], :bounds => [c[1], c[2]]
     end
     pdf.stroke
