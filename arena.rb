@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 #
-require 'pry'
 require 'prawn'
 require 'prawn/measurement_extensions'
 
